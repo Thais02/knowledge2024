@@ -18,23 +18,16 @@ def get_enrollment_df(data_path: Path, primary_data_path: Path, citycodes_path: 
     }, inplace=True)
     df.drop(0, inplace=True)
 
+    df['Year'] = pd.to_numeric(df['Year'])
+
     # add primary enrollment from different datasource
     primary_df = _get_primary_enrollment_df(primary_data_path, citycodes_path)
     primary_df.rename(columns={'AANTAL_LEERLINGEN': 'Primary'}, inplace=True)
-    primary_df.reset_index(level=0, inplace=True)
-    primary_df = primary_df.apply(pd.to_numeric)
-    primary_df: pd.DataFrame  # the df.apply function returns type Any so this is to help the IDE
-    primary_df.reset_index(inplace=True)
-    # df = pd.concat([df, primary_df], axis=1)
-    # df = df.join(primary_df)
-    df.set_index(['Gemeenten'], inplace=True)
-    df = df.apply(pd.to_numeric)
-    df: pd.DataFrame  # the df.apply function returns type Any so this is to help the IDE
 
     df = pd.merge(df, primary_df, on=['Year', 'Gemeenten'], how='outer')
     df.insert(0, 'Primary', df.pop('Primary'))
 
-    # create a multi-index Year > City > Prediction/Actual > Category
+    # create a multi-index Year > City
     df.set_index(pd.MultiIndex.from_arrays([df['Year'], df['Gemeenten']]), inplace=True)
     df.drop(['Year', 'Gemeenten'], axis=1, inplace=True)
 
@@ -124,6 +117,8 @@ def _get_primary_enrollment_df(data_path: Path, citycodes_path: Path) -> pd.Data
         cities_dfs.append(process_city_data(df, city_code, city_name))
 
     combined_df = pd.concat(cities_dfs).reset_index(drop=True)
+
+    combined_df['PEILJAAR'] = pd.to_numeric(combined_df['PEILJAAR'])
 
     # Group the combined data by 'PEILJAAR' and 'Plaatsnaam', summing the 'AANTAL_LEERLINGEN' for each year
     multi_index_combined_df = combined_df.set_index(['PEILJAAR', 'Plaatsnaam']).sort_index()

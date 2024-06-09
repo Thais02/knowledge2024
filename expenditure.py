@@ -4,7 +4,7 @@ import re
 
 
 def _get_expenses_year_df(path: Path, only_begroting: bool, only_total: bool) -> pd.DataFrame:
-    year = re.match(r'Gemeenten_(\d{4})_', path.stem).group(1)  # regex the year from the filename
+    year = int(re.match(r'Gemeenten_(\d{4})_', path.stem).group(1))  # regex the year from the filename
     df = pd.read_csv(path, skiprows=4, skipfooter=1, sep=';', engine='python')
 
     # rename the columns, drop the last header row, add a Year column

@@ -13,6 +13,10 @@ def get_poverty_df(path: Path, only_total=False) -> pd.DataFrame:
     }, inplace=True)
     df.drop(0, inplace=True)
 
+    df['Year'] = pd.to_numeric(df['Year'].str.replace('*', ''))
+    df['Minderjarige kinderen'] = pd.to_numeric(df['Minderjarige kinderen'].str.replace(',', '.'))
+    df['Minderjarige kinderen relatief'] = pd.to_numeric(df['Minderjarige kinderen relatief'].str.replace(',', '.'))
+
     # create a multi-index Year > City > Category
     df.set_index(pd.MultiIndex.from_arrays([df['Year'], df['Gemeenten'], df['Inkomensgrens huishouden']]), inplace=True)
     df.drop(['Year', 'Gemeenten', 'Inkomensgrens huishouden'], axis=1, inplace=True)
