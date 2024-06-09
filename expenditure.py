@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 
 
-def _get_expenses_year_df(path: Path) -> pd.DataFrame:
+def _get_expenses_year_df(path: Path, only_begroting: bool, only_total: bool) -> pd.DataFrame:
     year = re.match(r'Gemeenten_(\d{4})_', path.stem).group(1)  # regex the year from the filename
     df = pd.read_csv(path, skiprows=4, skipfooter=1, sep=';', engine='python')
 
@@ -33,15 +33,24 @@ def _get_expenses_year_df(path: Path) -> pd.DataFrame:
 
     df = pd.concat([df, totals])
     df.drop(['Year', 'Gemeenten', 'Verslagsoort', 'Taakveld/balanspost'], axis=1, inplace=True)
-    df.sort_index(inplace=True)
-    return df
+
+    if only_begroting:
+        df = df[df.index.isin(['Begroting'], level=2)]
+        df.set_index(df.index.droplevel(level=2), inplace=True)
+
+    if only_total:
+        df = df[df.index.isin(['4.T TOTAL'], level='Taakveld/balanspost')]
+        df.set_index(df.index.droplevel(level='Taakveld/balanspost'), inplace=True)
+        df = df[['Total']]
+
+    return df.sort_index()
 
 
-def get_expenses_df(search_dir: Path) -> pd.DataFrame:
+def get_expenses_df(search_dir: Path, only_begroting=False, only_total=False) -> pd.DataFrame:
     year_dfs = []
 
     for path in search_dir.rglob('Gemeenten_*.csv'):
-        year_dfs.append(_get_expenses_year_df(path))
+        year_dfs.append(_get_expenses_year_df(path, only_begroting, only_total))
 
     df = pd.concat(year_dfs)
     return df.sort_index()
