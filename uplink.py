@@ -7,8 +7,6 @@ import plotly.graph_objects as go  # pip install plotly
 import plotly.express as px
 from plotly.subplots import make_subplots
 
-from expenditure import get_expenses_df
-from enrollment import get_enrollment_df
 from merging import get_merged_df
 
 
@@ -23,48 +21,25 @@ def get_csv(filename_snippet: str) -> Path:
         raise FileNotFoundError(f'No .csv file found containing "{filename_snippet}"')
 
 
-@server.callable
-def get_expenses_data():
-    df = get_expenses_df(DATA_DIR, only_begroting=True, only_total=True)
-    df.reset_index(inplace=True)
-    df['Year'] = df['Year'].astype(str)
-    df.set_index(['Year', 'Gemeenten'], inplace=True)
-    dic = df.groupby(level=0).apply(lambda df: df.xs(df.name).to_dict()).to_dict()
-    return dic
-
-
-@server.callable
-def get_total_enrollment_data():
-    df = get_enrollment_df(get_csv('Regionale_kerncijfers_'), get_csv('primary_education_'), get_csv('georef'),
-                           only_total=True)
-    df.reset_index(inplace=True)
-    df['Year'] = df['Year'].astype(str)
-    df.set_index(['Year', 'Gemeenten'], inplace=True)
-    dic = df.groupby(level=0).apply(lambda df: df.xs(df.name).to_dict()).to_dict()
-    return dic
+df = get_merged_df(
+        DATA_DIR,
+        get_csv('Regionale_kerncijfers_'), get_csv('primary_education_'), get_csv('georef'),
+        get_csv('Laag_en_langdurig_laag_inkomen_'),
+        only_full_data=True,
+)
+df.reset_index(inplace=True)
+df['Year'] = df['Year'].astype(str)
+df.set_index(['Year', 'Gemeenten'], inplace=True)
 
 
 @server.callable
 def get_merged_data():
-    df = get_merged_df(
-        DATA_DIR,
-        get_csv('Regionale_kerncijfers_'), get_csv('primary_education_'), get_csv('georef'),
-        get_csv('Laag_en_langdurig_laag_inkomen_'),
-    )
-    df.reset_index(inplace=True)
-    df['Year'] = df['Year'].astype(str)
-    df.set_index(['Year', 'Gemeenten'], inplace=True)
     dic = df.groupby(level=0).apply(lambda df: df.xs(df.name).to_dict()).to_dict()
     return dic
 
 
 @server.callable
 def get_cities():
-    df = get_merged_df(
-        DATA_DIR,
-        get_csv('Regionale_kerncijfers_'), get_csv('primary_education_'), get_csv('georef'),
-        get_csv('Laag_en_langdurig_laag_inkomen_'),
-    )
     return sorted(df.index.get_level_values('Gemeenten').unique().to_list())
 
 
