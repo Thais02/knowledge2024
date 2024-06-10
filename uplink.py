@@ -23,7 +23,7 @@ def get_csv(filename_snippet: str) -> Path:
 
 df = get_merged_df(
         DATA_DIR,
-        get_csv('Regionale_kerncijfers_'), get_csv('primary_education_'), get_csv('georef'),
+        get_csv('Regionale_kerncijfers_'), get_csv('primary_education_'), get_csv('georef'), get_csv('enrollment-secondary'),
         get_csv('Laag_en_langdurig_laag_inkomen_'),
         only_full_data=True,
 )
