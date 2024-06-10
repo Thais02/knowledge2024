@@ -29,7 +29,7 @@ def get_merged_df(
 
     expenses_df.rename(columns={'Total': 'Education expenses'}, inplace=True)
     enrollment_df.rename(columns={'Total': 'Total enrollment'}, inplace=True)
-    poverty_df.rename(columns={'Minderjarige kinderen': 'Impoverished children'}, inplace=True)
+    poverty_df.rename(columns={'Minderjarige kinderen relatief': 'Impoverished children'}, inplace=True)
 
     df = pd.merge(enrollment_df, expenses_df, on=['Year', 'Gemeenten'], how='outer')
     df = pd.merge(df, poverty_df, on=['Year', 'Gemeenten'], how='outer')

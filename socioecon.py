@@ -23,7 +23,7 @@ def get_poverty_df(path: Path, only_total=False) -> pd.DataFrame:
     df.sort_index(inplace=True)
 
     if only_total:
-        df = df.xs('Totaal', level='Inkomensgrens huishouden')
-        df.drop(['Minderjarige kinderen relatief'], axis=1, inplace=True)
+        df = df.xs('Inkomen tot lage-inkomensgrens', level='Inkomensgrens huishouden')
+        df.drop(['Minderjarige kinderen'], axis=1, inplace=True)
 
     return df
