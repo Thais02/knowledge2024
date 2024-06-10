@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 
 
-def get_enrollment_df(data_path: Path, primary_data_path: Path, citycodes_path: Path) -> pd.DataFrame:
+def get_enrollment_df(data_path: Path, primary_data_path: Path, citycodes_path: Path, only_total=False) -> pd.DataFrame:
     df = pd.read_csv(data_path, skiprows=3, skipfooter=1, sep=';', engine='python', na_values='.')
 
     # rename the columns, drop the last header row, add a Year column
@@ -40,6 +40,10 @@ def get_enrollment_df(data_path: Path, primary_data_path: Path, citycodes_path: 
     # sum both MBO variants, NOT included in total
     df['MBO Total'] = df['MBO1'] + df['MBO2']
     df.insert(4, 'MBO Total', df.pop('MBO Total'))
+
+    if only_total:
+        df = df[['Total']]
+        df.dropna(inplace=True)
 
     return df.sort_index()
 
