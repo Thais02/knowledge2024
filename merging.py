@@ -4,7 +4,7 @@ import re
 import matplotlib.pyplot as plt
 
 from expenditure import get_expenses_df
-from enrollment import get_enrollment_df, get_secondary_enrollment_df
+from enrollment import get_enrollment_df, _get_secondary_enrollment_df
 from socioecon import get_poverty_df
 
 
@@ -18,13 +18,12 @@ def get_cities_inner(df: pd.DataFrame) -> list[str]:
 
 def get_merged_df(
         expenses_search_dir: Path,
-        enrollment_path: Path, primary_enrollment_path: Path, citycodes_path: Path,
+        enrollment_path: Path, primary_enrollment_path: Path, citycodes_path: Path, secondary_enrollment_path: Path,
         poverty_path: Path,
         only_full_data=False,
-
 ):
     expenses_df = get_expenses_df(expenses_search_dir, only_begroting=True, only_total=True)
-    enrollment_df = get_enrollment_df(enrollment_path, primary_enrollment_path, citycodes_path)
+    enrollment_df = get_enrollment_df(enrollment_path, primary_enrollment_path, citycodes_path, secondary_enrollment_path)
     poverty_df = get_poverty_df(poverty_path, only_total=True)
 
     expenses_df.rename(columns={'Total': 'Education expenses'}, inplace=True)

@@ -3,7 +3,8 @@ from pathlib import Path
 import re
 
 
-def get_enrollment_df(data_path: Path, primary_data_path: Path, citycodes_path: Path, only_total=False) -> pd.DataFrame:
+def get_enrollment_df(data_path: Path, primary_data_path: Path, citycodes_path: Path, secondary_path: Path,
+                      only_total=False, split_vmbo=False) -> pd.DataFrame:
     df = pd.read_csv(data_path, skiprows=3, skipfooter=1, sep=';', engine='python', na_values='.')
 
     # rename the columns, drop the last header row, add a Year column
@@ -20,12 +21,19 @@ def get_enrollment_df(data_path: Path, primary_data_path: Path, citycodes_path: 
 
     df['Year'] = pd.to_numeric(df['Year'])
 
+    df.drop('Secondary', axis=1, inplace=True)  # will be added later to not be included in total
+
     # add primary enrollment from different datasource
     primary_df = _get_primary_enrollment_df(primary_data_path, citycodes_path)
     primary_df.rename(columns={'AANTAL_LEERLINGEN': 'Primary'}, inplace=True)
 
     df = pd.merge(df, primary_df, on=['Year', 'Gemeenten'], how='outer')
     df.insert(0, 'Primary', df.pop('Primary'))
+
+    # add granular secondary enrollment from different datasource
+    secondary_df = _get_secondary_enrollment_df(secondary_path, split_vmbo=split_vmbo)
+
+    df = pd.merge(df, secondary_df, on=['Year', 'Gemeenten'], how='outer')
 
     # create a multi-index Year > City
     df.set_index(pd.MultiIndex.from_arrays([df['Year'], df['Gemeenten']]), inplace=True)
@@ -41,6 +49,10 @@ def get_enrollment_df(data_path: Path, primary_data_path: Path, citycodes_path: 
     df['MBO Total'] = df['MBO1'] + df['MBO2']
     df.insert(4, 'MBO Total', df.pop('MBO Total'))
 
+    # sum all secondary variants, NOT included in total
+    df['Secondary'] = df['PRAKTIJK'] + df['VMBO'] + df['HAVO'] + df['VWO'] + df['HAVO/VWO']
+    df.insert(1, 'Secondary', df.pop('Secondary'))
+
     if only_total:
         df = df[['Total']]
         df.dropna(inplace=True)
@@ -48,7 +60,7 @@ def get_enrollment_df(data_path: Path, primary_data_path: Path, citycodes_path: 
     return df.sort_index()
 
 
-def get_secondary_enrollment_df(path: Path, split_vmbo=False) -> pd.DataFrame:
+def _get_secondary_enrollment_df(path: Path, split_vmbo=False) -> pd.DataFrame:
     def extract_secondary_type(text: str) -> str:
         if text == 'Praktijkonderwijs alle vj':
             return 'PRAKTIJK'
@@ -81,14 +93,21 @@ def get_secondary_enrollment_df(path: Path, split_vmbo=False) -> pd.DataFrame:
 
     df.loc[df['Gemeenten'] == 'Utrecht', 'Gemeenten'] = 'Utrecht (gemeente)'
 
-    df.set_index(pd.MultiIndex.from_arrays([df['Year'], df['Gemeenten'], df['Type'], df['LEERJAAR']]),
-                 inplace=True)
-    df.drop(['Year', 'Gemeenten', 'Type', 'LEERJAAR', 'ONDERWIJSTYPE VO EN LEER- OF VERBLIJFSJAAR'],
-            axis=1, inplace=True)
+    df.set_index(['Year', 'Gemeenten', 'LEERJAAR', 'Type'], inplace=True)
+    df.drop(['ONDERWIJSTYPE VO EN LEER- OF VERBLIJFSJAAR'], axis=1, inplace=True)
 
-    df = df.groupby(level=(0, 1, 2)).sum()  # add level 3 to split by seniority year
+    df = df.pivot_table(
+        index=['Year', 'Gemeenten', 'LEERJAAR'],
+        columns=['Type'],
+        values='AANTAL LEERLINGEN',
+        aggfunc='sum',
+        fill_value=0
+    )
+
+    df = df.groupby(level=(0, 1)).sum()  # add level 2 to split by seniority year
+    df: pd.DataFrame
+    df.index.set_names(names='Gemeenten', level=1, inplace=True)
     df.sort_index(inplace=True)
-
     return df
 
 
@@ -137,11 +156,13 @@ def plot_enrollment_city(df: pd.DataFrame, cities: list[str], kind='bar', subplo
     for city in df.index.get_level_values('Gemeenten').unique():
         if city in cities:
             df_city = df.xs(city, level='Gemeenten')
-            yield df_city.plot(y=['Primary', 'Secondary', 'MBO Total', 'HBO', 'WO'], kind=kind, title=f'Enrollment {city}',
+            yield df_city.plot(y=['Primary', 'Secondary', 'MBO Total', 'HBO', 'WO'], kind=kind,
+                               title=f'Enrollment {city}',
                                figsize=(10, 10), subplots=subplots, rot=0, ylabel='Students')
 
 
 def plot_enrollment_total(df: pd.DataFrame, cities: list[str], kind='bar', subplots=False):
     df = df[df.index.isin(cities, level='Gemeenten')]
-    return df.unstack(level=1).plot(y='Total', kind=kind, title='Total enrollment', figsize=(10, 10), subplots=subplots, rot=0,
+    return df.unstack(level=1).plot(y='Total', kind=kind, title='Total enrollment', figsize=(10, 10), subplots=subplots,
+                                    rot=0,
                                     ylabel='Students')
