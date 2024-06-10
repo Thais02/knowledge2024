@@ -8,10 +8,19 @@ from enrollment import get_enrollment_df, get_secondary_enrollment_df
 from socioecon import get_poverty_df
 
 
+def get_cities_inner(df: pd.DataFrame) -> list[str]:
+    """
+    Returns a list of all cities which appear in all datasources
+    """
+    df_inner = df.dropna(how='any')
+    return df_inner.index.get_level_values('Gemeenten').unique()
+
+
 def get_merged_df(
         expenses_search_dir: Path,
         enrollment_path: Path, primary_enrollment_path: Path, citycodes_path: Path,
         poverty_path: Path,
+        only_full_data=False,
 
 ):
     expenses_df = get_expenses_df(expenses_search_dir, only_begroting=True, only_total=True)
@@ -24,6 +33,9 @@ def get_merged_df(
 
     df = pd.merge(enrollment_df, expenses_df, on=['Year', 'Gemeenten'], how='outer')
     df = pd.merge(df, poverty_df, on=['Year', 'Gemeenten'], how='outer')
+
+    if only_full_data:
+        df.dropna(how='any', inplace=True)
 
     return df
 
